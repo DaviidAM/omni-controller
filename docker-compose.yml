@@ -1,0 +1,40 @@
+version: "3.8"
+
+services:
+  omni-controller:
+    build: ./backend
+    container_name: omni-controller
+    restart: unless-stopped
+    ports:
+      - "${OMNI_CONTROLLER_PORT:-8081}:8000"
+    env_file: .env
+    environment:
+      - OMNIROUTE_URL=http://omniroute:20128
+    depends_on:
+      omniroute:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  omniroute:
+    image: diegosouzapw/omniroute:3.8.40
+    container_name: omni-controller-omniroute
+    restart: unless-stopped
+    expose:
+      - "20128"  # OmniRoute 3.8.40 listens on 20128 internally
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:20128/login"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Redis is optional but OmniRoute may use it for caching. If team finds
+  # OmniRoute complains about Redis at startup, add this service.
+  # omniroute-redis:
+  #   image: redis:7-alpine
+  #   container_name: omni-controller-redis
+  #   restart: unless-stopped
